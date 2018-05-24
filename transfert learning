@@ -1,0 +1,96 @@
+% ThÃ©o Morfoisse
+
+%Second Trying: On travaille toujours sur les donnÃ©es brutes,i.e I les
+%pixels et L les labels. Cette fois-ci, on utilise le transfert Learning.
+%On va donc utiliser AlexNet comme rÃ©seaux de neurones convolutionnels. 
+
+%%
+%Organisation of digits.mat :
+%I:matrix of 28*28*6000, representing 6000 images of 28*28
+%C:representing points whith a threshold at 200 pixels ( over 256 )
+%L:labels(1,2 ... )
+
+load('digits.mat');
+
+%To see just one image with the points.
+
+% close all
+% k = 1000;
+% imagesc(I(:,:,k));colormap gray;axis equal
+% hold on
+% plot(C{k}(2,:),C{k}(1,:),'.r','MarkerSize',20)
+
+% figure;
+% perm = randperm(6000,20);
+% for i = 1:20
+%     subplot(4,5,i);
+%     imagesc(I(:,:,i));
+% end
+
+%To count the number of examples in each labels.
+% LabelCount=zeros(1,10);
+% for i=1:60000
+%     label=L(i)+1;
+%     LabelCount(1,label)=LabelCount(1,label)+1;
+% end
+% LabelCount;
+
+%% Resizing of the image.
+
+N=6000;
+
+I=I(:,:,1:N);
+I=imresize(I,8.1071);
+
+J=zeros(227,227,1,N);
+for i=1:N
+    J(:,:,i,1)=I(:,:,i);
+    J(:,:,i,2)=I(:,:,i);
+    J(:,:,i,3)=I(:,:,i);
+end
+I=J;
+%% Preparation of the data for training and validation
+
+% Separate training and validation data.
+trainNum=N*0.7;
+
+%Need to transform train inputs in 4D matrix with the dimension 3
+%always equal to one.(channels=1).
+trainDigitData=permute(I(:,:,1:trainNum),[1 2  4 3]);
+%need to be a categorical vector for the trainLabel.
+trainLabel=categorical(L(1:trainNum));
+
+%valDigitData={I(:,:,trainNum+1:60000);L(trainNum+1:60000)};
+validationdata=permute(I(:,:,trainNum+1:N),[1 2 4 3]);
+validationlabel=categorical(L(trainNum+1:N));
+valDigitData={validationdata;validationlabel};
+
+%%
+
+net=alexnet;
+net.Layers
+layersTransfer = net.Layers(1:end-3);
+
+
+
+%Defining the layers.
+        
+
+
+
+%Defining the options of training;
+%The validation Data is not used for the update of the weight during
+%training, is juste to compute the accuracy during training. 
+%One epochs is a fully cycle training with the same training data set.
+%sgdm=Stochastic gradient descent with momentum.
+%verbose=informations in the command windows.
+options=trainingOptions('sgdm',...
+    'MaxEpochs',3, ...
+    'ValidationData',valDigitData,...
+    'ValidationFrequency',20,...
+    'Verbose',false,...
+    'Plots','training-progress');
+
+%training
+
+net=trainNetwork(trainDigitData,trainLabel,layers,options);
