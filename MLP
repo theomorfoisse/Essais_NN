@@ -1,0 +1,89 @@
+%% Theo Morfoisse 
+%% 09/02/2018
+
+%Cette fois-ci, je vais essayer la fonction Train directement, au lieu de
+%la fonction TrainNetwork. La premiÃ¨re semble mieux correspondre au rÃ©seau
+%de neurones linÃ©aires (f.c) alors que la seconde pour les CNNs.
+
+%Organisation of digits.mat :
+%I:matrix of 28*28*6000, representing 6000 images of 28*28
+%C:representing points whith a threshold at 200 pixels ( over 256 )
+%C{k}: tableau Ã  deux colonnes avec les coordonnÃ©es des points.
+%L:labels(1,2 ... )
+
+load('digits.mat');
+tic
+N=60000;
+N2=40000;
+batchSize=N2*0.7; % pas vraiment un batch size ici. Plus un nombre de data pour le training.
+
+%% Dealing with the data from the tab C.
+%On veut que toutes les tab dans C aient la mÃªme taille.
+
+lengthC=zeros(N,1);
+for i=1:N
+    lengthC(i)=length(C{i});
+end
+maxLength=max(lengthC);
+
+%Je teste avec la distance car les donnÃ©es doivent Ãªtre organisÃ©s que dans un
+%seul vecteur pour chaque image. Et je doute que mettre les donnÃ©es sur X pu
+%sur Y sur le mÃªme vecteur soit trÃ¨s cohÃ©rent.
+
+newC=zeros(N,maxLength*2);
+for i=1:N
+    l=length(C{i});
+    if l<maxLength
+       C{i}=[C{i} zeros(2,maxLength-l)];
+    end
+%     distance(i,:)=sqrt(C{i}(1,:).*C{i}(1,:)+C{i}(2,:).*C{i}(2,:));
+    newC(i,1:maxLength)=C{i}(1,:);
+    newC(i,maxLength+1:maxLength*2,1)=C{i}(2,:);
+end
+C=newC;
+
+
+%% Resizing of L 
+%Pour une image i, normalement L est juste un nombre indiquant le label
+%correspond Ã  l'image. Maintenant, pour pouvoir calculer le cross-entropie,
+%L change. Pour une image i, L est un vecteur de 10 lignes avec que des zÃ©ros et un Ã 
+%l'incide correspond au label.
+ 
+l=L;
+newL=zeros(N,10);
+for i=1:N
+    li=L(i)+1;
+    newL(i,li)=1;
+end
+L=newL;
+%L : [60000,10]
+
+%% Definition of the network.
+%On utilise patternet pour des problÃ¨mes de pattern recognition avec
+%plusieurs classes. 
+
+net=patternnet(10);
+net=train(net,C(1:batchSize,:)',L(1:batchSize,:)');
+% view(net)
+y=net(C(batchSize+1:N2,:)');   % [10,60000], proba pour chaque image qu'ils soient dans telles ou telles classes. ( 0<pi<1)
+perf=perform(net,L(batchSize+1:N2,:)',y) % Ceci calcule l'erreur que l'on obtient. 
+%On obtient la mÃªme chose avec la cross-entropy
+
+
+%Ici je calcule la moyenne des bonnes pÃ©dictions.
+%C'est Ã  dire que pour chaque image, on va associer une proba Ã  chacune des
+%classes. ( 0<pi<1 ) La classe avec la probabilitÃ© la plus forte sera
+%choisie comme Ã©tant la bonne classe. une fois l'indice de cette classe
+%obtenue on pourra le comparer au label.
+
+Y=zeros(N2-batchSize,1);
+
+for i=1:N2-batchSize
+    [~,index]=max(y(:,i));
+    Y(i)=(index==l(i+batchSize)+1);
+    
+end
+mean(Y)
+
+
+toc
